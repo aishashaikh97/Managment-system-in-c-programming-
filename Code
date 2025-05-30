@@ -1,0 +1,605 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_STUDENTS 500
+#define MAX_COURSES 10  // Maximum courses a student can register for
+
+// Structure for storing student details
+struct Student {
+    int id;
+    char name[50];
+    char fatherName[50];
+    char courses[MAX_COURSES][50];
+    int numCourses; // Number of courses the student is registered for
+    int feesPaid;   // 0 - No, 1 - Yes
+    char section[5];
+    char password[20];
+    float attendance;
+    float cgpa;
+};
+
+// Global array to store students
+struct Student students[MAX_STUDENTS];//500 students defined 
+int studentCount = 0;
+
+// Function prototypes
+void loadDataFromFile();//function for filing
+void saveDataToFile();//function for filing
+void adminLogin();//admin portal(it requires password)
+void teacherLogin();//teacher portal(it requires password)
+void studentLogin();
+void adminMenu();//display portal
+void teacherMenu();
+void studentMenu();
+void addStudent();
+void updateStudent();
+void removeStudent();
+void viewStudentDetails();//for teacher and admin portal
+void updateAttendance();
+void updateCGPA();
+void viewStudentInfo(int studentId);//student portal(it requires password)
+void changeStudentPassword();
+void updateStudentCourses(struct Student *student);
+
+void loadDataFromFile() { 
+    FILE *file = fopen("student.dat", "rb");
+    if (file != NULL) {
+        while (fread(&students[studentCount], sizeof(struct Student), 1, file)) {
+            studentCount++;
+        }
+        fclose(file);
+    }
+}
+
+void saveDataToFile() {
+    FILE *file = fopen("student.dat", "wb");
+    if (file != NULL) {
+    	int i;
+        for ( i = 0; i < studentCount; i++) {
+            fwrite(&students[i], sizeof(struct Student), 1, file);
+        }
+        fclose(file);
+    } else {
+        printf("Error saving data to file!\n");
+    }
+}
+
+// Admin login function
+void adminLogin() {
+    char adminPassword[20] = "admin123";  // Simple password for admin
+    char enteredPassword[20];
+    
+    printf("Enter Admin Password: ");
+    scanf("%s", enteredPassword);
+    
+    if (strcmp(adminPassword, enteredPassword) != 0) {
+    printf("Incorrect password! Returning to main menu...\n");
+    return; // Return to the main menu
+}
+    
+    adminMenu();
+}
+
+// Teacher login function
+void teacherLogin() {
+    char teacherPassword[20] = "teacher123";  // Simple password for teacher
+    char enteredPassword[20];
+    
+    printf("Enter Teacher Password: ");
+    scanf("%s", enteredPassword);
+    
+    if (strcmp(teacherPassword, enteredPassword) != 0) {
+    printf("Incorrect password! Returning to main menu...\n");
+    return; // Return to the main menu
+}
+    
+    teacherMenu();
+}
+
+// Student login function
+void studentLogin() {
+    int id;
+    char password[20];//to store password
+    
+    printf("Enter Student ID: ");
+    scanf("%d", &id);
+    
+    printf("Enter Password: ");
+    scanf("%s", password);//Unique password for each student
+    
+    int found = 0;
+    int i;
+    for ( i = 0; i < studentCount; i++) {
+        if (students[i].id == id && strcmp(students[i].password, password) == 0) {
+            found = 1;
+            studentMenu(i);//display student portal
+            break;
+        }
+    }
+    
+    if (!found) {
+        printf("Invalid ID or Password!\n");
+    }
+}
+
+// Admin menu (Add, Update, Remove, View, Change password)
+void adminMenu() {
+    int choice=0;
+    do {
+        printf("\nAdmin Portal\n");
+        printf("1. Add Student\n");
+        printf("2. Update Student\n");
+        printf("3. Remove Student\n");
+        printf("4. View Student Details\n");
+        printf("5. Change Student Password\n");
+        printf("6. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch(choice) {
+            case 1:
+                addStudent();
+                break;
+            case 2:
+                updateStudent();
+                break;
+            case 3:
+                removeStudent();
+                break;
+            case 4:
+                viewStudentDetails();
+                break;
+            case 5:
+                changeStudentPassword();
+                break;
+            case 6:
+                printf("Exiting Admin Portal...\n");
+                break;
+            default:
+                printf("Invalid choice! Please try again.\n");
+        }
+    } while (choice != 6);
+}
+
+// Teacher menu (Update Attendance, Update CGPA, View Attendance)
+void teacherMenu() {
+    int choice;
+    do {
+        printf("\nTeacher Portal\n");
+        printf("1. Update Attendance\n");
+        printf("2. Update CGPA\n");
+        printf("3. View Details\n");
+        printf("4. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch(choice) {
+            case 1:
+                updateAttendance();
+                break;
+            case 2:
+                updateCGPA();
+                break;
+            case 3:
+                viewStudentDetails();
+                break;
+            case 4:
+                printf("Exiting Teacher Portal...\n");
+                break;
+            default:
+                printf("Invalid choice! Please try again.\n");
+        }
+    } while (choice != 4);
+}
+
+// Function for Student Menu (View Details, Change Password)
+void studentMenu(int index) {
+    int choice;
+    do {
+        printf("\nStudent Portal\n");
+        printf("1. View Details\n");
+        printf("2. Change Password\n");
+        printf("3. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch(choice) {
+            case 1:
+                viewStudentInfo(index);
+                break;
+            case 2:
+                changeStudentPassword(index);
+                break;
+            case 3:
+                printf("Exiting Student Portal...\n");
+                break;
+            default:
+                printf("Invalid choice! Please try again.\n");
+        }
+    } while (choice != 3);
+}
+
+// Function to add a new student
+void addStudent() {
+    if (studentCount >= MAX_STUDENTS) {
+        printf("Student limit reached!\n");
+        return;
+    }
+    
+    struct Student newStudent;
+    printf("Enter Student ID (4 digits): ");
+    while (1) {
+    if (scanf("%d", &newStudent.id) != 1 || newStudent.id < 1000 || newStudent.id > 9999) {
+        printf("Invalid input! ID must be a 4-digit number. Try again: ");
+        while (getchar() != '\n'); // Clear invalid input
+    } else {
+        int exists = 0;
+        int i;
+        for ( i = 0; i < studentCount; i++) {
+            if (students[i].id == newStudent.id) {
+                printf("Error: Student ID already exists! Try again: ");
+                exists = 1;
+                break;
+            }
+        }if (!exists) break ;
+    }
+}
+
+    printf("Enter Name: ");
+    getchar(); // Clear the newline character left by scanf
+    fgets(newStudent.name, sizeof(newStudent.name), stdin);
+    newStudent.name[strcspn(newStudent.name, "\n")] = 0;
+
+    printf("Enter Father's Name: ");
+    fgets(newStudent.fatherName, sizeof(newStudent.fatherName), stdin);
+    newStudent.fatherName[strcspn(newStudent.fatherName, "\n")] = 0;
+    
+    printf("Enter Department: ");
+    scanf("%s", newStudent.section);
+    
+    printf("Number of courses to register for (max 10): ");
+    scanf("%d", &newStudent.numCourses);
+    
+    int i;
+    for ( i = 0; i < newStudent.numCourses; i++) {
+        printf("Enter course %d: ", i + 1);
+        getchar(); // Clear any leftover newline
+        fgets(newStudent.courses[i], sizeof(newStudent.courses[i]), stdin);
+        newStudent.courses[i][strcspn(newStudent.courses[i], "\n")] = 0;
+    }
+
+    printf("Has the fee been paid? (1 for Yes, 0 for No): ");
+    while (scanf("%d", &newStudent.feesPaid) != 1 || (newStudent.feesPaid != 1 && newStudent.feesPaid != 0)) {
+        printf("Invalid input! Please enter 1 for Yes or 0 for No: ");
+        while (getchar() != '\n'); // Clear invalid input
+    }
+    int length;
+    
+    do {
+        printf("Set Password (unique): ");
+        scanf("%s", newStudent.password);
+
+        length = strlen(newStudent.password);
+
+        if (length > 10) {
+            printf("Invalid Password (should be 10 characters or less)!!\n");
+        }
+
+    } while (length > 10);
+    newStudent.attendance = 0.0;
+    newStudent.cgpa = 0.0;
+
+    students[studentCount++] = newStudent;
+
+    saveDataToFile();
+    printf("Student added successfully!\n");
+}
+
+// Function to update student information
+void updateStudent() {
+	int i;
+    int id, found = 0;
+    printf("Enter Student ID to update: ");
+    scanf("%d", &id);
+
+    for ( i = 0; i < studentCount; i++) {
+        if (students[i].id == id) {
+            found = 1;
+            int choice;
+            do {
+                printf("\nUpdate Options:\n");
+                printf("1. Update Name\n");
+                printf("2. Update Father's Name\n");
+                printf("3. Update Section\n");
+                printf("4. Update Courses\n");
+                printf("5. Update Fees\n");
+                printf("6. Exit\n");
+                printf("Enter your choice: ");
+                scanf("%d", &choice);
+
+                switch(choice) {
+                    case 1:
+                        printf("Enter new name: ");
+                        getchar();
+                        fgets(students[i].name, sizeof(students[i].name), stdin);
+                        students[i].name[strcspn(students[i].name, "\n")] = 0;
+                        break;
+                    case 2:
+                        printf("Enter new father's name: ");
+                        getchar();
+                        fgets(students[i].fatherName, sizeof(students[i].fatherName), stdin);
+                        students[i].fatherName[strcspn(students[i].fatherName, "\n")] = 0;
+                        break;
+                    case 3:
+                        printf("Enter new Department: ");
+                        scanf("%s", students[i].section);
+                        break;
+                    case 4:
+                        updateStudentCourses(&students[i]);
+                        break;
+                    case 5:
+                        printf("Enter updated fees status (1 for Yes, 0 for No): ");
+                        while (scanf("%d", &students[i].feesPaid) != 1 || (students[i].feesPaid != 1 && students[i].feesPaid != 0)) {
+                        printf("Invalid input! Please enter 1 for Yes or 0 for No: ");
+                        while (getchar() != '\n'); // Clear invalid input
+                        }
+                        printf("Fees status updated successfully!\n");
+                        break;
+
+                    case 6:
+                        break;
+                    default:
+                        printf("Invalid option! Try again.\n");
+                }
+            } while (choice != 6);
+            break;
+        }
+    }
+    
+    if (!found) {
+        printf("Student ID not found!\n");
+    }
+    
+    saveDataToFile();
+}
+// Function to update student's courses
+void updateStudentCourses(struct Student *student) {
+    printf("How many courses would you like to register for (max 10)? ");
+    scanf("%d", &student->numCourses); // Use the pointer to modify the numCourses field
+
+    getchar(); // Consume leftover newline character from scanf
+    int i;
+    for ( i = 0; i < student->numCourses; i++) {
+        printf("Enter course %d: ", i + 1);
+        fgets(student->courses[i], sizeof(student->courses[i]), stdin);
+        student->courses[i][strcspn(student->courses[i], "\n")] = 0; // Remove newline character
+    }
+}
+// Function to remove a student
+void removeStudent() {
+    int id, found = 0;
+    printf("Enter Student ID to remove: ");
+    scanf("%d", &id);
+
+    int i,j;
+    for ( i = 0; i < studentCount; i++) {
+        if (students[i].id == id) {
+            found = 1;
+            for ( j = i; j < studentCount - 1; j++) {
+                students[j] = students[j + 1];
+            }
+            studentCount--;
+            printf("Student removed successfully!\n");
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Student ID not found!\n");
+    }
+
+    saveDataToFile();
+}
+// Function to view a student's details
+void viewStudentDetails() {
+    int id;
+    int i,j;
+    printf("Enter Student ID to view details: ");
+    scanf("%d", &id);
+    
+    int found = 0;
+    for ( i = 0; i < studentCount; i++) {
+        if (students[i].id == id) {
+            found = 1;
+            printf("\nStudent ID: %d\n", students[i].id);
+            printf("Name: %s\n", students[i].name);
+            printf("Father's Name: %s\n", students[i].fatherName);
+            printf("Department: %s\n", students[i].section);
+            printf("Courses: ");
+            for ( j = 0; j < students[i].numCourses; j++) {
+            printf("%s", students[i].courses[j]);
+                if (j < students[i].numCourses - 1) {
+                    printf(", ");
+                }
+            }
+            printf("\nFees Paid: %s\n", students[i].feesPaid ? "Yes" : "No");
+            printf("Attendance: %.2f%%\n", students[i].attendance);
+            printf("CGPA: %.2f\n", students[i].cgpa);
+            break;
+        }
+    }
+    if (!found) {
+        printf("Student ID not found!\n");
+    }
+}
+// Function to change student's password
+void changeStudentPassword() {
+    int id, found = 0;
+    char newPassword[20];
+    int i;
+    
+    printf("Enter Student ID: ");
+    scanf("%d", &id);
+    int length;
+    for ( i = 0; i < studentCount; i++) {
+        if (students[i].id == id) {
+            found = 1;
+        do {
+            printf("Enter new password: ");
+            scanf("%s", newPassword);
+        	length = strlen(newPassword);
+
+        	if (length > 10) {
+            printf("Invalid Password (should be 10 characters or less)!!\n");
+        }
+
+    } while (length > 10);
+            strcpy(students[i].password, newPassword);
+            saveDataToFile();
+            printf("Password updated successfully for Student ID: %d\n", id);
+            break;
+        }
+    }
+    
+    if (!found) {
+        printf("Student ID not found!\n");
+    }
+}
+// Function to update attendance and CGPA
+void updateAttendance() {
+    int id;
+    printf("Enter Student ID to update attendance: ");
+    while (scanf("%d", &id) != 1) {
+    printf("Invalid input! Please enter a valid Student ID: ");
+    while (getchar() != '\n'); // Clear invalid input
+    }
+    int found = 0;
+    int i;
+    for ( i = 0; i < studentCount; i++) {
+        if (students[i].id == id) {
+            found = 1;
+            // Update attendance
+            printf("Current Attendance: %.2f%%\n", students[i].attendance);
+            printf("Enter new Attendance (0-100): ");
+            while (scanf("%f", &students[i].attendance) != 1 || students[i].attendance < 0 || students[i].attendance > 100) {
+                printf("Invalid input! Attendance must be between 0 and 100. Try again: ");
+                while (getchar() != '\n'); // Clear invalid input
+            }
+
+            printf("Attendance updated successfully!\n");
+            break;
+        }
+    }
+    if (!found) {
+        printf("Student ID not found!\n");
+    }
+
+    saveDataToFile(); // Save updated data to file
+}
+void updateCGPA(){
+	int id;
+    printf("Enter Student ID to update CGPA: ");
+    while (scanf("%d", &id) != 1) {
+    printf("Invalid input! Please enter a valid Student ID: ");
+    while (getchar() != '\n'); // Clear invalid input
+    }
+    int found = 0;
+    int i;
+    for ( i = 0; i < studentCount; i++) {
+        if (students[i].id == id) {
+            found = 1;
+
+            // Update CGPA
+            printf("Current CGPA: %.2f\n", students[i].cgpa);
+            printf("Enter new CGPA (0-4): ");
+            while (scanf("%f", &students[i].cgpa) != 1 || students[i].cgpa < 0 || students[i].cgpa > 4) {
+                printf("Invalid input! CGPA must be between 0 and 4. Try again: ");
+             while (getchar() != '\n'); // Clear invalid input
+            }
+
+            printf("CGPA updated successfully!\n");
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Student ID not found!\n");
+    }
+
+    saveDataToFile(); // Save updated data to file
+}
+
+// Function to view a student's information
+void viewStudentInfo(int studentIndex) {
+    printf("\nStudent ID: %d\n", students[studentIndex].id);
+    printf("Name: %s\n", students[studentIndex].name);
+    printf("Father's Name: %s\n", students[studentIndex].fatherName);
+    printf("Department: %s\n", students[studentIndex].section);
+    printf("Courses: ");
+    int i;
+    for ( i = 0; i < students[studentIndex].numCourses; i++) {
+        printf("%s, ", students[studentIndex].courses[i]);
+    }
+    printf("\nFees Paid: %s\n", students[studentIndex].feesPaid ? "Yes" : "No");
+    printf("Attendance: %.2f%%\n", students[studentIndex].attendance);
+    printf("CGPA: %.2f\n", students[studentIndex].cgpa);
+}
+
+int main() {
+	system("color 70");
+    loadDataFromFile();
+    //extra decor
+    
+	printf("\n\t\t\t\t\t    *           * ***** *        *****  ******  *     * *****     ");
+	printf("\n\t\t\t\t\t     *         *  *     *      *       *      * * * * * *         ");
+	printf("\n\t\t\t\t\t      *   *   *   ***** *      *       *      * *  *  * *****     ");
+	printf("\n\t\t\t\t\t       * * * *    *     *      *       *      * *     * *         ");
+	printf("\n\t\t\t\t\t        *   *     ***** ******   *****  ******  *     * *****     ");
+    printf("\n");
+    printf("\n");
+
+    //extra decor
+    printf("\n\t\t\t\t\t      *****    ******              *******  *     *  *******");
+	printf("\n\t\t\t\t\t        *     *      *             *        * * * *  *      ");
+	printf("\n\t\t\t\t\t        *     *      *             *******  *  *  *  *******");
+	printf("\n\t\t\t\t\t        *     *      *                   *  *     *        *");
+	printf("\n\t\t\t\t\t        *      ******              *******  *     *  *******");
+    
+    //extra decor
+    
+    
+    
+    
+    //extra decor
+    printf("\n\n\t\t\t\t\t******************  STUDENT MANAGMENT SYSTEM  ******************\n\n");
+    int choice;
+    do {
+        printf("\nStudent Management System\n");
+        printf("1. Admin Login\n");
+        printf("2. Teacher Login\n");
+        printf("3. Student Login\n");
+        printf("4. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch(choice) {
+            case 1:
+                adminLogin();
+                break;
+            case 2:
+                teacherLogin();
+                break;
+            case 3:
+                studentLogin();
+                break;
+            case 4:
+                printf("Exiting...\n");
+                break;
+            default:
+                printf("Invalid choice! Please try again.\n");
+        }
+    } while (choice != 4);
+    
+    return 0;
+}
